@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# 环境配置
+.env
+
+# 本地模型缓存（约 470MB）
+models/
+
+# 日志
+logs/
+
+# Node.js
+node_modules/
+dist/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# copilot配置环境
+.github/
+
+# 项目文档
+docs/

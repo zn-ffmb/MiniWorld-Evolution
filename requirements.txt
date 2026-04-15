@@ -1,0 +1,20 @@
+# MiniWorld 依赖清单
+
+# --- LLM ---
+openai>=1.0.0
+pydantic-settings>=2.0.0
+pydantic>=2.0.0
+
+# --- 搜索 (复用 BettaFish) ---
+tavily-python>=0.3.0
+requests>=2.28.0
+
+# --- 图算法 ---
+networkx>=3.0
+
+# --- 聚类 (自实现 KMeans++, 无 scikit-learn 依赖) ---
+sentence-transformers>=2.2.0
+numpy>=1.24.0
+
+# --- 日志 ---
+loguru>=0.7.0
