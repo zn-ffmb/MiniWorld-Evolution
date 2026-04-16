@@ -202,8 +202,9 @@ class StreamingEvolutionEngine:
                 })
 
             # Step 4: 传播与更新
+            max_cascade = getattr(self.config, "EVOLUTION_MAX_CASCADE_ROUNDS", 3)
             tick_updates, prop_summary = await asyncio.to_thread(
-                self.world_llm.propagate, state, all_actions
+                self.world_llm.propagate, state, all_actions, max_cascade_rounds=max_cascade
             )
             state.apply_updates(tick_updates, tick=tick)
 
