@@ -55,6 +55,7 @@ class Settings(BaseSettings):
     EVOLUTION_AGENT_TEMPERATURE: float = Field(0.7, description="Agent 决策 temperature")
     EVOLUTION_WORLD_TEMPERATURE: float = Field(0.3, description="WorldLLM temperature")
     EVOLUTION_EQUILIBRIUM_WINDOW: int = Field(3, description="均衡检测窗口(连续N个tick)")
+    EVOLUTION_AGENT_DELIBERATION: bool = Field(True, description="是否启用Agent两阶段审议(关闭则仅执行策略推理阶段)")
 
     # --- 输出路径 ---
     WORLDS_DIR: str = Field("worlds", description="世界快照存放目录")

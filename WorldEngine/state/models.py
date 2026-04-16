@@ -24,6 +24,8 @@ class Entity:
     # --- L1 Phase 6 后填充 (仅人类类) ---
     agent_prompt: Optional[str] = None
     action_space: dict[str, list[str]] = field(default_factory=dict)
+    cognition_style: str = "strategic"
+        # 认知风格: "strategic" | "intuitive" | "reactive"
 
     # --- L1 Phase 7 后填充 ---
     initial_status: str = ""

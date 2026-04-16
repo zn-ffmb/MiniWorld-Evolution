@@ -41,6 +41,7 @@ class WorldMergeNode(StateMutationNode):
                 source_urls=edata.get("source_urls", []),
                 evidence_freshness=edata.get("evidence_freshness", ""),
                 status_trend=edata.get("status_trend", ""),
+                cognition_style=edata.get("cognition_style", "") or "strategic",
             )
             if entity.id not in state.entities:
                 state.entities[entity.id] = entity

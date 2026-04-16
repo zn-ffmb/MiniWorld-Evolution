@@ -28,6 +28,7 @@ class EntityLiveState:
     description: str = ""
     agent_prompt: Optional[str] = None       # 仅 human 类有值
     action_space: dict = field(default_factory=dict)  # 仅 human 类有值
+    cognition_style: str = "strategic"       # "strategic" | "intuitive" | "reactive"
 
     # --- 可变状态 ---
     status: str = ""                         # 当前状态的自然语言描述
@@ -46,6 +47,7 @@ class EntityLiveState:
             description=entity.description,
             agent_prompt=entity.agent_prompt,
             action_space=entity.action_space or {},
+            cognition_style=getattr(entity, 'cognition_style', 'strategic'),
             status=entity.initial_status,
             tags=dict(entity.initial_tags) if entity.initial_tags else {},
         )
@@ -89,8 +91,23 @@ class AgentAction:
     target_entities: list = field(default_factory=list)  # 目标实体名称
     visible_context: str = ""                # Agent 做决策时看到的信息
 
+    # --- v3: 策略推理链 ---
+    situation_assessment: str = ""           # Agent 的局势研判
+    key_party_predictions: list = field(default_factory=list)  # 关键方预判
+    counterfactual: str = ""                 # 不行动的后果评估
+
+    # --- v3: 审议记录 ---
+    deliberation: list = field(default_factory=list)  # 红队审视记录
+
+    # --- v3.1: 认知层级 ---
+    cognition_style: str = "strategic"       # 该行动来自哪种认知风格
+    cognition_context: dict = field(default_factory=dict)
+        # strategic: {"situation_assessment", "key_party_predictions", "counterfactual"}
+        # intuitive: {"gut_feeling", "expectation"}
+        # reactive: {"emotional_trigger", "dominant_emotion", "emotion_intensity"}
+
     def to_dict(self) -> dict:
-        return {
+        result = {
             "agent_id": self.agent_id,
             "agent_name": self.agent_name,
             "action_type": self.action_type,
@@ -98,6 +115,20 @@ class AgentAction:
             "reasoning": self.reasoning,
             "target_entities": self.target_entities,
         }
+        # v3 字段: 仅在有内容时序列化
+        if self.situation_assessment:
+            result["situation_assessment"] = self.situation_assessment
+        if self.key_party_predictions:
+            result["key_party_predictions"] = self.key_party_predictions
+        if self.counterfactual:
+            result["counterfactual"] = self.counterfactual
+        if self.deliberation:
+            result["deliberation"] = self.deliberation
+        if self.cognition_style != "strategic":
+            result["cognition_style"] = self.cognition_style
+        if self.cognition_context:
+            result["cognition_context"] = self.cognition_context
+        return result
 
 
 # ─────────────────────────────────────────────────────────
