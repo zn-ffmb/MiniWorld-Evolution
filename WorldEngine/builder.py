@@ -22,6 +22,7 @@ from WorldEngine.nodes.prompt_generation_node import PromptGenerationNode
 from WorldEngine.nodes.world_meta_node import WorldMetaNode
 from WorldEngine.nodes.snapshot_export_node import SnapshotExportNode
 from WorldEngine.nodes.network_analysis_node import NetworkAnalysisNode
+from WorldEngine.nodes.interest_extraction_node import InterestExtractionNode
 
 
 class WorldBuilder:
@@ -72,6 +73,9 @@ class WorldBuilder:
 
         # v3: 网络结构分析（纯算法, 不需要 LLM）
         self.network_analysis_node = NetworkAnalysisNode()
+
+        # v3: 利益-目标提取
+        self.interest_extraction_node = InterestExtractionNode(self.llm_client)
 
         # 校验器
         self.evidence_validator = EvidenceValidator()
@@ -172,6 +176,11 @@ class WorldBuilder:
         logger.info("=== Phase 5.5: 网络结构分析 ===")
         network_report = self.network_analysis_node.analyze(state)
         logger.info(network_report.summary_for_llm(state.entities))
+
+        # Phase 5.7: 利益-目标提取 (v3 新增)
+        logger.info(f"\n{'='*60}")
+        logger.info("=== Phase 5.7: 利益-目标提取 ===")
+        state = self.interest_extraction_node.mutate_state(None, state)
 
         # Phase 6: Agent Prompt 生成
         logger.info(f"\n{'='*60}")

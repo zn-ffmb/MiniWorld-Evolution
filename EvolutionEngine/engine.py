@@ -207,9 +207,12 @@ class EvolutionEngine:
                 f"{action.action_description[:100]}"
             )
 
-        # Step 4: WorldLLM 传播与更新
+        # Step 4: WorldLLM 传播与更新（v3: 多轮级联）
         logger.info("--- Step 4: 传播与更新 ---")
-        updates, prop_summary = self.world_llm.propagate(state, all_actions)
+        max_cascade = getattr(self.config, "EVOLUTION_MAX_CASCADE_ROUNDS", 3)
+        updates, prop_summary = self.world_llm.propagate(
+            state, all_actions, max_cascade_rounds=max_cascade,
+        )
 
         # 应用状态变更
         state.apply_updates(updates, tick=state.current_tick)

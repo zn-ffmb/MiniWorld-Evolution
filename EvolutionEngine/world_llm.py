@@ -20,6 +20,7 @@ from EvolutionEngine.state.models import (
 from EvolutionEngine.prompts.prompts import (
     WORLD_ASSESS_PROMPT,
     WORLD_PROPAGATE_PROMPT,
+    WORLD_CASCADE_PROPAGATE_PROMPT,
     WORLD_NARRATE_PROMPT,
     WORLD_PERTURBATION_PROMPT,
 )
@@ -150,13 +151,18 @@ class WorldLLM:
         )
 
     def propagate(
-        self, state: EvolutionState, actions: List[AgentAction]
+        self, state: EvolutionState, actions: List[AgentAction],
+        max_cascade_rounds: int = 3,
     ) -> Tuple[List[EntityUpdate], str]:
         """
-        Step 4: 汇总 Agent 动作，沿边传播影响，更新实体状态。
+        Step 4: 多轮级联传播。
+
+        Round 1: Agent 动作 → 一级影响
+        Round 2+: 上一轮状态变化 → 沿关系网络触发连锁反应
+        直到无新增影响或达到最大轮次。
 
         Returns:
-            (entity_updates, propagation_summary)
+            (all_entity_updates, propagation_summary)
         """
         actions_summary = "\n".join(
             f"- {a.agent_name} [{a.action_type}]: {a.action_description}"
@@ -168,6 +174,7 @@ class WorldLLM:
         if not actions_summary:
             actions_summary = "本 tick 无 Agent 采取行动"
 
+        # === Round 1: 一级传播（Agent 动作的直接影响）===
         prompt = WORLD_PROPAGATE_PROMPT.format(
             background=state.background,
             focus=state.focus,
@@ -180,23 +187,118 @@ class WorldLLM:
 
         response = self.llm_client.invoke(
             system_prompt=prompt,
-            user_prompt="请执行传播并更新实体状态。",
+            user_prompt="请执行一级传播并更新实体状态。",
             temperature=self.temperature,
         )
 
         result = extract_clean_response(response)
         if "error" in result:
-            logger.warning(f"传播 JSON 解析失败: {result}")
+            logger.warning(f"一级传播 JSON 解析失败: {result}")
             return [], "传播解析失败"
 
-        updates = self._parse_entity_updates(
-            result.get("entity_updates", [])
-            + result.get("secondary_propagation", []),
+        round1_updates = self._parse_entity_updates(
+            result.get("entity_updates", []),
             state,
         )
         summary = result.get("propagation_summary", "")
+        all_updates = list(round1_updates)
 
-        return updates, summary
+        logger.info(f"  Round 1（一级传播）: {len(round1_updates)} 个实体更新")
+
+        if not round1_updates:
+            return all_updates, summary
+
+        # === Round 2+: 级联传播 ===
+        # 创建临时状态副本用于级联推理
+        temp_entities_status = {
+            eid: (e.status, dict(e.tags))
+            for eid, e in state.entities.items()
+        }
+        # 应用 Round 1 更新到临时视图
+        for u in round1_updates:
+            if u.entity_id in state.entities:
+                temp_entities_status[u.entity_id] = (u.new_status, u.new_tags)
+
+        last_round_updates = round1_updates
+        for round_num in range(2, max_cascade_rounds + 1):
+            cascade_updates = self._cascade_round(
+                state, round_num, last_round_updates, all_updates,
+                temp_entities_status,
+            )
+
+            if not cascade_updates:
+                logger.info(f"  Round {round_num}（级联）: 级联耗尽，停止")
+                break
+
+            logger.info(f"  Round {round_num}（级联）: {len(cascade_updates)} 个实体更新")
+            all_updates.extend(cascade_updates)
+
+            # 更新临时状态
+            for u in cascade_updates:
+                if u.entity_id in state.entities:
+                    temp_entities_status[u.entity_id] = (u.new_status, u.new_tags)
+
+            last_round_updates = cascade_updates
+
+        return all_updates, summary
+
+    def _cascade_round(
+        self,
+        state: EvolutionState,
+        round_num: int,
+        last_updates: List[EntityUpdate],
+        all_updates: List[EntityUpdate],
+        temp_entities_status: dict,
+    ) -> List[EntityUpdate]:
+        """执行一轮级联传播"""
+        # 格式化触发事件（上一轮的变化）
+        cascade_trigger = "\n".join(
+            f"- {u.entity_name}: {u.change_reason} → 新状态: {u.new_status}"
+            for u in last_updates
+        )
+
+        # 格式化基于临时状态的实体摘要
+        temp_status_lines = []
+        for eid, e in state.entities.items():
+            status, tags = temp_entities_status.get(eid, (e.status, e.tags))
+            tags_str = ", ".join(f"{k}: {v}" for k, v in tags.items()) if tags else ""
+            line = f"[{e.type}] {e.name} (id: {eid}) | 状态: {status}"
+            if tags_str:
+                line += f" | 标签: {tags_str}"
+            temp_status_lines.append(line)
+
+        # 格式化已完成的全部变更
+        previous_summary = "\n".join(
+            f"- {u.entity_name}: {u.change_reason}"
+            for u in all_updates
+        ) or "无"
+
+        prompt = WORLD_CASCADE_PROPAGATE_PROMPT.format(
+            round_num=round_num,
+            cascade_trigger=cascade_trigger,
+            edges_summary=state.get_edges_summary(),
+            all_entity_states="\n".join(temp_status_lines),
+            previous_updates_summary=previous_summary,
+        )
+
+        response = self.llm_client.invoke(
+            system_prompt=prompt,
+            user_prompt=f"请判断第 {round_num} 轮级联传播。",
+            temperature=self.temperature,
+        )
+
+        result = extract_clean_response(response)
+        if "error" in result:
+            logger.warning(f"级联传播 Round {round_num} 解析失败: {result}")
+            return []
+
+        if result.get("cascade_exhausted", False):
+            return []
+
+        return self._parse_entity_updates(
+            result.get("entity_updates", []),
+            state,
+        )
 
     def narrate(
         self, state: EvolutionState, actions: List[AgentAction], updates: List[EntityUpdate]

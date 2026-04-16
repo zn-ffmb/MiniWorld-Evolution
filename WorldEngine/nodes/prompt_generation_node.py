@@ -135,6 +135,9 @@ class PromptGenerationNode(StateMutationNode):
 
         evidence_text = "\n".join(entity.evidence[:8])
 
+        # v3: 构建结构化利益段落
+        interests_section = self._format_interests_section(entity)
+
         system_prompt = AGENT_GENERATION_SYSTEM_PROMPT.format(
             entity_name=entity.name,
             entity_type=entity.type,
@@ -144,6 +147,7 @@ class PromptGenerationNode(StateMutationNode):
             decide_capability=decide_capability,
             say_capability=say_capability,
             influence_targets=influence_targets,
+            interests_section=interests_section,
             all_entity_names=", ".join(all_entity_names),
             related_edges=related_edges_text,
             neighbors=neighbors_text,
@@ -197,5 +201,70 @@ class PromptGenerationNode(StateMutationNode):
             if constraints:
                 parts.append(f"- **约束**: {constraints}")
             return "\n".join(parts) if parts else "- 你不具备此类行动能力"
+
+    @staticmethod
+    def _format_interests_section(entity) -> str:
+        """v3: 将结构化利益数据格式化为 agent_prompt 中的可读段落"""
+        interests = entity.interests or []
+        goal_structure = entity.goal_structure
+
+        if not interests and not goal_structure:
+            return "- 从 evidence 中提取该实体的核心利益诉求\n- 短期目标和长期目标"
+
+        lines = []
+
+        # 利益维度按优先级排序
+        priority_order = {"core": 0, "important": 1, "secondary": 2}
+        satisfaction_emoji = {
+            "satisfied": "✅",
+            "threatened": "⚠️",
+            "under_attack": "🔴",
+        }
+
+        sorted_interests = sorted(
+            interests,
+            key=lambda i: priority_order.get(
+                i.get("priority", "important") if isinstance(i, dict) else getattr(i, "priority", "important"),
+                1,
+            ),
+        )
+
+        if sorted_interests:
+            lines.append("### 利益维度（按优先级排序）")
+            for idx, interest in enumerate(sorted_interests, 1):
+                if isinstance(interest, dict):
+                    dim = interest.get("dimension", "")
+                    desc = interest.get("description", "")
+                    pri = interest.get("priority", "important")
+                    sat = interest.get("current_satisfaction", "")
+                    related = interest.get("related_entities", [])
+                else:
+                    dim = interest.dimension
+                    desc = interest.description
+                    pri = interest.priority
+                    sat = interest.current_satisfaction
+                    related = interest.related_entities
+
+                pri_label = {"core": "核心", "important": "重要", "secondary": "次要"}.get(pri, pri)
+                sat_label = satisfaction_emoji.get(sat, "")
+                line = f"{idx}. [{pri_label}] {dim} — {desc}（当前: {sat}{sat_label}）"
+                if related:
+                    line += f"\n   └ 相关方: {', '.join(related)}"
+                lines.append(line)
+
+        if goal_structure:
+            gs = goal_structure if isinstance(goal_structure, dict) else goal_structure.to_dict()
+            lines.append("\n### 目标体系")
+            for g in gs.get("survival_goals", []):
+                lines.append(f"- 底线: {g}")
+            for g in gs.get("strategic_goals", []):
+                lines.append(f"- 战略: {g}")
+            for g in gs.get("opportunistic_goals", []):
+                lines.append(f"- 机会: {g}")
+            rc = gs.get("rationality_constraints", "")
+            if rc:
+                lines.append(f"\n### 决策约束\n{rc}")
+
+        return "\n".join(lines)
 
         return "- 你不具备此类行动能力"

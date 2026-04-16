@@ -12,6 +12,40 @@ from datetime import datetime
 
 
 @dataclass
+class StakeholderInterest:
+    """实体的一个利益维度"""
+    dimension: str = ""                  # 利益维度名(如"能源安全""经济收入")
+    description: str = ""                # 该利益的具体描述
+    priority: str = "important"          # "core" | "important" | "secondary"
+    current_satisfaction: str = ""       # "satisfied" | "threatened" | "under_attack"
+    supporting_evidence: list[str] = field(default_factory=list)  # 证据引用
+    related_entities: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "StakeholderInterest":
+        return cls(**{k: v for k, v in data.items() if k in cls.__dataclass_fields__})
+
+
+@dataclass
+class GoalStructure:
+    """实体的目标体系"""
+    survival_goals: list[str] = field(default_factory=list)       # 生存级目标
+    strategic_goals: list[str] = field(default_factory=list)      # 战略级目标
+    opportunistic_goals: list[str] = field(default_factory=list)  # 机会级目标
+    rationality_constraints: str = ""                             # 理性约束描述
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "GoalStructure":
+        return cls(**{k: v for k, v in data.items() if k in cls.__dataclass_fields__})
+
+
+@dataclass
 class Entity:
     """闭合小世界中的一个实体节点"""
     id: str                              # 唯一标识, 如 "entity_opec"
@@ -26,6 +60,10 @@ class Entity:
     action_space: dict[str, list[str]] = field(default_factory=dict)
     cognition_style: str = "strategic"
         # 认知风格: "strategic" | "intuitive" | "reactive"
+
+    # --- L1 v3: 利益-目标建模 (仅人类类, Phase 6 填充) ---
+    interests: list = field(default_factory=list)       # list[StakeholderInterest]
+    goal_structure: Optional[dict] = None               # GoalStructure.to_dict()
 
     # --- L1 Phase 7 后填充 ---
     initial_status: str = ""
