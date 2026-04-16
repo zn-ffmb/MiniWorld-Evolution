@@ -29,6 +29,14 @@ class Entity:
     initial_status: str = ""
     initial_tags: dict[str, str] = field(default_factory=dict)
 
+    # --- L1 v3: 证据时效性 ---
+    evidence_freshness: str = ""
+        # 证据时效性评估: "mostly_fresh" | "mixed" | "mostly_stale" | ""
+    evidence_date_range: str = ""
+        # 证据时间跨度, 如 "2026-01 ~ 2026-04"
+    status_trend: str = ""
+        # 状态变化趋势（从时间序列证据中推断）
+
     def to_dict(self) -> dict:
         return asdict(self)
 
@@ -181,6 +189,9 @@ class WorldSnapshot:
     nature_entity_count: int = 0
     edge_count: int = 0
 
+    # --- v3: 网络结构分析 ---
+    network_analysis: dict = field(default_factory=dict)
+
     def to_dict(self) -> dict:
         return {
             "world_id": self.world_id,
@@ -197,6 +208,7 @@ class WorldSnapshot:
             "human_entity_count": self.human_entity_count,
             "nature_entity_count": self.nature_entity_count,
             "edge_count": self.edge_count,
+            "network_analysis": self.network_analysis,
         }
 
     def to_json(self) -> str:
@@ -222,6 +234,7 @@ class WorldSnapshot:
             human_entity_count=data.get("human_entity_count", 0),
             nature_entity_count=data.get("nature_entity_count", 0),
             edge_count=data.get("edge_count", 0),
+            network_analysis=data.get("network_analysis", {}),
         )
         for edata in data.get("entities", []):
             snapshot.entities.append(Entity.from_dict(edata))

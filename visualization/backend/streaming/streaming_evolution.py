@@ -18,6 +18,7 @@ from loguru import logger
 from EvolutionEngine.llms.base import LLMClient
 from EvolutionEngine.world_llm import WorldLLM
 from EvolutionEngine.agent_runner import AgentRunner
+from EvolutionEngine.equilibrium import EquilibriumDetector
 from EvolutionEngine.exporters.timeline_exporter import TimelineExporter
 from EvolutionEngine.state.models import (
     EvolutionState,
@@ -60,6 +61,10 @@ class StreamingEvolutionEngine:
             temperature=config.EVOLUTION_AGENT_TEMPERATURE,
         )
         self.exporter = TimelineExporter()
+
+        # v3: 均衡检测器
+        equilibrium_window = getattr(config, "EVOLUTION_EQUILIBRIUM_WINDOW", 3)
+        self.equilibrium_detector = EquilibriumDetector(window_size=equilibrium_window)
 
     async def evolve_stream(
         self,
@@ -236,6 +241,16 @@ class StreamingEvolutionEngine:
                 timestamp=datetime.now().isoformat(),
             ))
 
+            # v3: 算法均衡检测
+            is_eq, eq_reason = self.equilibrium_detector.check(state)
+            if is_eq:
+                state.is_terminated = True
+                state.termination_reason = eq_reason
+                yield make_event("evolve:equilibrium", {
+                    "tick": tick,
+                    "reason": eq_reason,
+                })
+
             if state.is_terminated:
                 break
 
@@ -248,6 +263,7 @@ class StreamingEvolutionEngine:
 
         yield make_event("evolve:complete", {
             "total_ticks": timeline.total_ticks,
+            "termination_reason": state.termination_reason or "",
             "summary": {
                 "total_agent_actions": timeline.total_agent_actions,
                 "total_entity_updates": timeline.total_entity_updates,

@@ -21,6 +21,7 @@ from WorldEngine.nodes.convergence_check_node import ConvergenceCheckNode
 from WorldEngine.nodes.prompt_generation_node import PromptGenerationNode
 from WorldEngine.nodes.world_meta_node import WorldMetaNode
 from WorldEngine.nodes.snapshot_export_node import SnapshotExportNode
+from WorldEngine.nodes.network_analysis_node import NetworkAnalysisNode
 
 
 class WorldBuilder:
@@ -68,6 +69,9 @@ class WorldBuilder:
         self.prompt_generation_node = PromptGenerationNode(self.llm_client)
         self.world_meta_node = WorldMetaNode(self.llm_client)
         self.snapshot_export_node = SnapshotExportNode()
+
+        # v3: 网络结构分析（纯算法, 不需要 LLM）
+        self.network_analysis_node = NetworkAnalysisNode()
 
         # 校验器
         self.evidence_validator = EvidenceValidator()
@@ -163,6 +167,12 @@ class WorldBuilder:
 
         # ========== 后处理 (收敛后) ==========
 
+        # Phase 5.5: 网络结构分析 (v3 新增 — 纯算法)
+        logger.info(f"\n{'='*60}")
+        logger.info("=== Phase 5.5: 网络结构分析 ===")
+        network_report = self.network_analysis_node.analyze(state)
+        logger.info(network_report.summary_for_llm(state.entities))
+
         # Phase 6: Agent Prompt 生成
         logger.info(f"\n{'='*60}")
         logger.info("=== Phase 6: 生成 Agent Prompt ===")
@@ -174,7 +184,9 @@ class WorldBuilder:
 
         # Phase 8: 导出快照
         logger.info("=== Phase 8: 导出世界快照 ===")
-        snapshot = self.snapshot_export_node.export(state)
+        snapshot = self.snapshot_export_node.export(
+            state, network_analysis=network_report.to_dict()
+        )
 
         os.makedirs(self.config.WORLDS_DIR, exist_ok=True)
         json_path = snapshot.save(self.config.WORLDS_DIR)

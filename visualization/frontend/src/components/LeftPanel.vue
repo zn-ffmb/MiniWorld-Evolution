@@ -354,13 +354,18 @@ function registerEvolveHandlers() {
     addLog("narrative", `Tick ${data.tick}: ${data.narrative || ''}`);
   });
 
+  sse.on("evolve:equilibrium", (data) => {
+    addLog("success", `均衡检测触发终止 (Tick ${data.tick}): ${data.reason}`);
+  });
+
   sse.on("evolve:complete", (data) => {
     state.phase = "evolved";
     const s = data.summary;
     addLog(
       "success",
       `演变完成! 总 tick: ${data.total_ticks}, ` +
-        `动作: ${s.total_agent_actions}, 变更: ${s.total_entity_updates}`
+        `动作: ${s.total_agent_actions}, 变更: ${s.total_entity_updates}` +
+        (data.termination_reason ? ` | 终止原因: ${data.termination_reason}` : "")
     );
     sse.disconnect();
   });

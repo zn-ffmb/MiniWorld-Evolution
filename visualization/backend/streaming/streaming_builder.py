@@ -26,6 +26,7 @@ from WorldEngine.nodes.convergence_check_node import ConvergenceCheckNode
 from WorldEngine.nodes.prompt_generation_node import PromptGenerationNode
 from WorldEngine.nodes.world_meta_node import WorldMetaNode
 from WorldEngine.nodes.snapshot_export_node import SnapshotExportNode
+from WorldEngine.nodes.network_analysis_node import NetworkAnalysisNode
 
 from visualization.backend.streaming.events import make_event
 
@@ -70,6 +71,7 @@ class StreamingWorldBuilder:
         self.prompt_generation_node = PromptGenerationNode(self.llm_client)
         self.world_meta_node = WorldMetaNode(self.llm_client)
         self.snapshot_export_node = SnapshotExportNode()
+        self.network_analysis_node = NetworkAnalysisNode()
         self.evidence_validator = EvidenceValidator()
 
     async def build_stream(
@@ -295,7 +297,10 @@ class StreamingWorldBuilder:
         })
 
         # Phase 8: 导出快照
-        snapshot = self.snapshot_export_node.export(state)
+        network_report = self.network_analysis_node.analyze(state)
+        snapshot = self.snapshot_export_node.export(
+            state, network_analysis=network_report.to_dict()
+        )
         os.makedirs(self.config.WORLDS_DIR, exist_ok=True)
         snapshot.save(self.config.WORLDS_DIR)
 

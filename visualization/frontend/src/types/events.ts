@@ -93,9 +93,16 @@ export interface EvolveNarrativeData {
   narrative: string;
 }
 
+/** evolve:equilibrium */
+export interface EvolveEquilibriumData {
+  tick: number;
+  reason: string;
+}
+
 /** evolve:complete */
 export interface EvolveCompleteData {
   total_ticks: number;
+  termination_reason?: string;
   summary: {
     total_agent_actions: number;
     total_entity_updates: number;

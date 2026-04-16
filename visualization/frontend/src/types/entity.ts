@@ -8,6 +8,9 @@ export interface EntityData {
   tags?: Record<string, string>;
   initial_status?: string;
   initial_tags?: Record<string, string>;
+  evidence_freshness?: string;
+  evidence_date_range?: string;
+  status_trend?: string;
 }
 
 /** 关系边数据 */

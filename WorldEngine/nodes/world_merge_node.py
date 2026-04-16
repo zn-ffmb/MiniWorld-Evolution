@@ -39,6 +39,8 @@ class WorldMergeNode(StateMutationNode):
                 description=edata.get("description", ""),
                 evidence=edata.get("evidence", []),
                 source_urls=edata.get("source_urls", []),
+                evidence_freshness=edata.get("evidence_freshness", ""),
+                status_trend=edata.get("status_trend", ""),
             )
             if entity.id not in state.entities:
                 state.entities[entity.id] = entity

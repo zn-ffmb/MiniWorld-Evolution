@@ -40,6 +40,7 @@ export function useSSE() {
     "evolve:propagation",
     "evolve:narrative",
     "evolve:tick_end",
+    "evolve:equilibrium",
     "evolve:complete",
     "evolve:error",
   ];

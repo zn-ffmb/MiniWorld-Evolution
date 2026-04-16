@@ -12,6 +12,7 @@ from loguru import logger
 from EvolutionEngine.llms.base import LLMClient
 from EvolutionEngine.world_llm import WorldLLM
 from EvolutionEngine.agent_runner import AgentRunner
+from EvolutionEngine.equilibrium import EquilibriumDetector
 from EvolutionEngine.exporters.timeline_exporter import TimelineExporter
 from EvolutionEngine.state.models import (
     EvolutionState,
@@ -58,6 +59,10 @@ class EvolutionEngine:
             temperature=config.EVOLUTION_AGENT_TEMPERATURE,
         )
         self.exporter = TimelineExporter()
+
+        # v3: 均衡检测器
+        equilibrium_window = getattr(config, "EVOLUTION_EQUILIBRIUM_WINDOW", 3)
+        self.equilibrium_detector = EquilibriumDetector(window_size=equilibrium_window)
 
     def evolve(
         self,
@@ -108,6 +113,14 @@ class EvolutionEngine:
 
             record = self._run_tick(state)
             state.timeline.append(record)
+
+            # v3: 算法均衡检测（比 WorldLLM 判断更可靠）
+            is_eq, eq_reason = self.equilibrium_detector.check(state)
+            if is_eq:
+                state.is_terminated = True
+                state.termination_reason = eq_reason
+                logger.info(f"均衡检测触发终止: {eq_reason}")
+                break
 
             if state.is_terminated:
                 logger.info(f"演变提前终止: {state.termination_reason}")

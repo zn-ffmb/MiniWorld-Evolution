@@ -101,15 +101,54 @@ class SearchExecutionNode(BaseNode):
 
     @staticmethod
     def _format_dimension(title: str, results: List[SearchResult]) -> str:
-        """格式化单个维度的搜索结果"""
+        """格式化单个维度的搜索结果（v3: 含时效性标注）"""
+        from datetime import datetime
+
         lines = [f"=== {title} (共 {len(results)} 条) ===\n"]
         for i, r in enumerate(results, 1):
-            lines.append(
+            # v3: 计算时效性标签
+            freshness_tag = ""
+            if r.published_date:
+                freshness_tag = SearchExecutionNode._compute_freshness_tag(r.published_date)
+
+            entry = (
                 f"[{i}] 标题: {r.title}\n"
                 f"    来源: {r.source_type} | {r.source_tool}\n"
                 f"    链接: {r.url}\n"
                 f"    内容: {r.content[:500]}\n"
             )
             if r.published_date:
-                lines[-1] = lines[-1].rstrip() + f"\n    发布时间: {r.published_date}\n"
+                entry = entry.rstrip() + f"\n    发布时间: {freshness_tag}{r.published_date}\n"
+            lines.append(entry)
         return "\n".join(lines)
+
+    @staticmethod
+    def _compute_freshness_tag(published_date: str) -> str:
+        """计算证据时效性标签"""
+        from datetime import datetime
+
+        try:
+            # 尝试多种日期格式
+            for fmt in ("%Y-%m-%d", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M:%SZ",
+                        "%Y/%m/%d", "%Y-%m-%d %H:%M:%S"):
+                try:
+                    dt = datetime.strptime(published_date[:len(fmt.replace("%", "x"))], fmt)
+                    break
+                except (ValueError, IndexError):
+                    continue
+            else:
+                return ""
+
+            days_ago = (datetime.now() - dt).days
+            if days_ago <= 7:
+                return "[本周] "
+            elif days_ago <= 30:
+                return "[近一月] "
+            elif days_ago <= 90:
+                return "[近三月] "
+            elif days_ago <= 365:
+                return "[近一年] "
+            else:
+                return "[较早] "
+        except Exception:
+            return ""

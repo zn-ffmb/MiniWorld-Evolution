@@ -8,7 +8,7 @@
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10+-green.svg)](https://python.org)
 [![Stars](https://img.shields.io/github/stars/zn-ffmb/MiniWorld-Evolution?style=social)](https://github.com/zn-ffmb/MiniWorld-Evolution)
 
-输入一个真实事件背景 → 自动搜索构建实体关系图谱 → 注入一个扰动 → 各方 Agent 自主决策、逐轮博弈
+输入一个真实事件背景 → 自动搜索构建实体关系图谱 → 注入一个扰动 → 各方 Agent 基于角色立场自主决策、逐轮博弈
 
 [快速开始](#-快速开始) · [核心机制](#-核心机制) · [架构详解](#-架构详解) · [可视化平台](#-可视化平台) · [配置说明](#-配置说明)
 
@@ -41,9 +41,9 @@
 
 每个参与方（国家、组织、市场）都是一个独立的 LLM Agent，拥有自己的角色身份和能力边界。每轮决策时，Agent 自行判断要不要行动、怎么行动——WorldLLM 不干预，只传播结果。
 
-### 🔀 信息不对称 — 不同角色看到不同情报
+### 🎭 角色差异化决策 — 同一世界，不同立场
 
-军事力量拿到卫星侦察数据，经济组织拿到供应链内部信息，政治人物拿到外交电报。同一个世界，不同信息优势，不同决策——这才是推演结果多样化的根源。
+所有 Agent 接收完全相同的世界状态信息和公开事件时间线。决策差异来自两个维度：每个 Agent 拥有独立的 **角色身份提示词（agent_prompt）**，定义了其立场、关注点和决策风格；以及独立的 **行动历史（action_history）**，记录了该 Agent 之前所有轮次的行动及其效果。同一份情报，军事力量关注的是威胁评估，经济组织关注的是市场冲击——角色认知差异驱动决策分化。
 
 ### 📐 三级收敛检测 — 世界质量有保证
 
@@ -160,9 +160,9 @@ Tick 0   WorldLLM.inject_perturbation → 注入扰动，产生即时冲击
         │
         ▼  ── 循环 max_ticks 次 ──────────────────────────────
 Step 1   WorldLLM.assess    → 评估局势（核心矛盾 & 关键张力）
-Step 2   WorldLLM.plan      → 信息不对称分发（每个 Agent 获得专属情报）
+Step 2   WorldLLM.plan      → 准备统一世界状态快照（不调用 LLM）
 Step 3   AgentRunner × N    → 所有 human Agent 并发自主决策
-                               输入: 公开事件时间线 + 专属情报 + 个人行动历史
+                               输入: 统一世界状态 + 公开事件时间线 + 个人行动历史
                                输出: do / decide / say / wait
 Step 4   WorldLLM.propagate → 行动传播为实体状态 & 关系更新
 Step 5   WorldLLM.narrate   → 叙事摘要 & 终止检测

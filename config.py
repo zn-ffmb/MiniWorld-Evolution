@@ -54,6 +54,7 @@ class Settings(BaseSettings):
     EVOLUTION_MAX_TICKS: int = Field(10, description="默认最大演变轮次")
     EVOLUTION_AGENT_TEMPERATURE: float = Field(0.7, description="Agent 决策 temperature")
     EVOLUTION_WORLD_TEMPERATURE: float = Field(0.3, description="WorldLLM temperature")
+    EVOLUTION_EQUILIBRIUM_WINDOW: int = Field(3, description="均衡检测窗口(连续N个tick)")
 
     # --- 输出路径 ---
     WORLDS_DIR: str = Field("worlds", description="世界快照存放目录")

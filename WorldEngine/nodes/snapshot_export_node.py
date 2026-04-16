@@ -22,7 +22,7 @@ class SnapshotExportNode(BaseNode):
     def run(self, input_data: Any, **kwargs) -> Any:
         raise NotImplementedError("请使用 export()")
 
-    def export(self, state: WorldBuildState) -> WorldSnapshot:
+    def export(self, state: WorldBuildState, network_analysis: dict = None) -> WorldSnapshot:
         """将 WorldBuildState 转化为 WorldSnapshot"""
         snapshot = WorldSnapshot(
             world_id=f"world_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
@@ -39,6 +39,7 @@ class SnapshotExportNode(BaseNode):
             human_entity_count=sum(1 for e in state.entities.values() if e.type == "human"),
             nature_entity_count=sum(1 for e in state.entities.values() if e.type == "nature"),
             edge_count=len(state.edges),
+            network_analysis=network_analysis or {},
         )
         return snapshot
 
