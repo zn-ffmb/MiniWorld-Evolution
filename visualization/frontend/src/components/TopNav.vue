@@ -16,6 +16,9 @@
       <el-tag v-else-if="state.phase === 'built'" type="success" effect="dark" size="small"
         >世界已构建</el-tag
       >
+      <el-tag v-else-if="state.phase === 'evolved' && state.equilibriumDetected" type="warning" effect="dark" size="small"
+        >⚖️ 均衡终止 (Tick {{ state.equilibriumTick }}/{{ state.maxTicksSetting }})</el-tag
+      >
       <el-tag v-else-if="state.phase === 'evolved'" type="info" effect="dark" size="small"
         >演变完成</el-tag
       >

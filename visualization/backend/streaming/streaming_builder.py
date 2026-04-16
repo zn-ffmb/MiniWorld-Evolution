@@ -298,6 +298,29 @@ class StreamingWorldBuilder:
 
         # Phase 8: 导出快照
         network_report = self.network_analysis_node.analyze(state)
+
+        # v3: 发送网络分析结果
+        yield make_event("build:network_analysis", {
+            "hub_nodes": network_report.hub_nodes,
+            "bridge_edges": network_report.bridge_edges,
+            "vulnerable_nodes": network_report.vulnerable_nodes,
+            "communities": network_report.communities,
+            "global_metrics": {
+                "density": round(network_report.density, 3),
+                "clustering_coefficient": round(network_report.average_clustering, 3),
+                "diameter": network_report.diameter,
+            },
+            "node_metrics": {
+                eid: {
+                    "degree": round(network_report.degree_centrality.get(eid, 0), 3),
+                    "betweenness": round(network_report.betweenness_centrality.get(eid, 0), 3),
+                    "closeness": round(network_report.closeness_centrality.get(eid, 0), 3),
+                }
+                for eid in network_report.degree_centrality
+            },
+            "summary": network_report.summary_for_llm(state.entities),
+        })
+
         snapshot = self.snapshot_export_node.export(
             state, network_analysis=network_report.to_dict()
         )

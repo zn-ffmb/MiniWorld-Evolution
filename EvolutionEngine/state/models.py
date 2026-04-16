@@ -124,8 +124,7 @@ class AgentAction:
             result["counterfactual"] = self.counterfactual
         if self.deliberation:
             result["deliberation"] = self.deliberation
-        if self.cognition_style != "strategic":
-            result["cognition_style"] = self.cognition_style
+        result["cognition_style"] = self.cognition_style
         if self.cognition_context:
             result["cognition_context"] = self.cognition_context
         return result

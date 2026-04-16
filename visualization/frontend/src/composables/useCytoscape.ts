@@ -117,6 +117,23 @@ const GRAPH_STYLE: Stylesheet[] = [
       "border-style": "dashed",
     },
   },
+  // v3: 认知风格样式（仅对 human 节点生效）
+  {
+    selector: 'node[cognitionStyle="intuitive"]',
+    style: {
+      "border-style": "dashed",
+      "border-color": "#8B5CF6",
+      "border-width": 3,
+    },
+  },
+  {
+    selector: 'node[cognitionStyle="reactive"]',
+    style: {
+      "border-style": "dotted",
+      "border-color": "#EF4444",
+      "border-width": 3,
+    },
+  },
 ];
 
 /**
@@ -217,7 +234,7 @@ export function useCytoscape(containerRef: Ref<HTMLElement | null>) {
    * 加载完整的世界网络（L2 演变开始时）。
    */
   function loadFullGraph(
-    entities: Array<{ id: string; name: string; type: string; status?: string; tags?: any }>,
+    entities: Array<{ id: string; name: string; type: string; status?: string; tags?: any; cognition_style?: string }>,
     edges: Array<{
       source: string;
       target: string;
@@ -236,6 +253,7 @@ export function useCytoscape(containerRef: Ref<HTMLElement | null>) {
           label: entity.name,
           type: entity.type,
           status: entity.status || "",
+          cognitionStyle: entity.cognition_style || "strategic",
         },
       });
     }
@@ -357,6 +375,22 @@ export function useCytoscape(containerRef: Ref<HTMLElement | null>) {
     cy.value?.fit(undefined, 50);
   }
 
+  /** v3: 根据网络分析中心性调整节点大小 */
+  function applyNetworkMetrics(nodeMetrics: Record<string, { degree: number; betweenness: number; closeness: number }>) {
+    if (!cy.value) return;
+    const values = Object.values(nodeMetrics).map(m => m.betweenness);
+    const max = Math.max(...values, 0.001);
+    for (const [nodeId, metrics] of Object.entries(nodeMetrics)) {
+      const node = cy.value.getElementById(nodeId);
+      if (node.length) {
+        const scale = 0.7 + (metrics.betweenness / max) * 0.6; // 0.7x ~ 1.3x
+        const baseW = node.data("type") === "human" ? 80 : 60;
+        const baseH = node.data("type") === "human" ? 50 : 60;
+        node.style({ width: baseW * scale, height: baseH * scale });
+      }
+    }
+  }
+
   /** 获取点击的节点数据 */
   function onNodeClick(callback: (nodeData: any) => void) {
     cy.value?.on("tap", "node", (evt) => {
@@ -378,6 +412,7 @@ export function useCytoscape(containerRef: Ref<HTMLElement | null>) {
     showPropagation,
     clearTickHighlights,
     fitView,
+    applyNetworkMetrics,
     onNodeClick,
   };
 }

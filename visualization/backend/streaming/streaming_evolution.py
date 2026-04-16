@@ -81,21 +81,45 @@ class StreamingEvolutionEngine:
 
         state = EvolutionState.from_snapshot(snapshot, perturbation, max_ticks)
 
+        # v3: 从 snapshot 中取出实体的利益/目标/时效性（L2 state 不保留这些字段）
+        snapshot_entities = {e.id: e for e in snapshot.entities}
+
+        def _entity_data(e):
+            """构建传给前端的实体数据，合并 L2 运行时状态和 L1 快照数据"""
+            d = {
+                "id": e.id,
+                "name": e.name,
+                "type": e.type,
+                "status": e.status,
+                "tags": e.tags,
+                "cognition_style": getattr(e, "cognition_style", "strategic"),
+            }
+            # 从 snapshot 补充 L1 富信息
+            se = snapshot_entities.get(e.id)
+            if se:
+                if se.interests:
+                    d["interests"] = [
+                        i if isinstance(i, dict) else (i.to_dict() if hasattr(i, 'to_dict') else i)
+                        for i in se.interests
+                    ]
+                if se.goal_structure:
+                    d["goal_structure"] = se.goal_structure if isinstance(se.goal_structure, dict) else (
+                        se.goal_structure.to_dict() if hasattr(se.goal_structure, 'to_dict') else se.goal_structure
+                    )
+                if se.evidence_freshness:
+                    d["evidence_freshness"] = se.evidence_freshness
+                if se.evidence_date_range:
+                    d["evidence_date_range"] = se.evidence_date_range
+                if se.status_trend:
+                    d["status_trend"] = se.status_trend
+            return d
+
         yield make_event("evolve:start", {
             "world_id": state.world_id,
             "perturbation": perturbation,
             "max_ticks": max_ticks,
             "tick_unit": state.tick_unit,
-            "entities": [
-                {
-                    "id": e.id,
-                    "name": e.name,
-                    "type": e.type,
-                    "status": e.status,
-                    "tags": e.tags,
-                }
-                for e in state.entities.values()
-            ],
+            "entities": [_entity_data(e) for e in state.entities.values()],
             "edges": [e.to_dict() for e in state.edges],
         })
 
@@ -193,12 +217,7 @@ class StreamingEvolutionEngine:
 
                 yield make_event("evolve:agent_action", {
                     "tick": tick,
-                    "agent_id": action.agent_id,
-                    "agent_name": action.agent_name,
-                    "action_type": action.action_type,
-                    "action_description": action.action_description,
-                    "reasoning": action.reasoning,
-                    "target_entities": action.target_entities,
+                    **action.to_dict(),
                 })
 
             # Step 4: 传播与更新

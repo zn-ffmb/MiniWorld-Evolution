@@ -17,6 +17,7 @@ interface CytoscapeGlobal {
   clearTickHighlights: (() => void) | null;
   fitView: (() => void) | null;
   runLayout: (() => void) | null;
+  applyNetworkMetrics: ((nodeMetrics: Record<string, any>) => void) | null;
 }
 
 const cyGlobal = reactive<CytoscapeGlobal>({
@@ -28,6 +29,7 @@ const cyGlobal = reactive<CytoscapeGlobal>({
   clearTickHighlights: null,
   fitView: null,
   runLayout: null,
+  applyNetworkMetrics: null,
 });
 
 export function useCytoscapeGlobal() {

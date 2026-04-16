@@ -269,6 +269,16 @@ function registerBuildHandlers() {
     addLog("info", `世界元信息已生成, tick 单位: ${data.tick_unit}`);
   });
 
+  // v3: 网络分析结果
+  sse.on("build:network_analysis", (data) => {
+    state.networkAnalysis = data;
+    addLog("info", `网络分析完成: 密度 ${data.global_metrics?.density}, 聚类系数 ${data.global_metrics?.clustering_coefficient}`);
+    // 根据中心性调整节点大小
+    if (cyGlobal.applyNetworkMetrics && data.node_metrics) {
+      cyGlobal.applyNetworkMetrics(data.node_metrics);
+    }
+  });
+
   sse.on("build:complete", (data) => {
     state.phase = "built";
     state.worldId = data.world_id;
@@ -298,6 +308,18 @@ function registerEvolveHandlers() {
     if (cyGlobal.loadFullGraph) {
       cyGlobal.loadFullGraph(data.entities, data.edges);
     }
+    // v3: 存储实体富信息（利益/目标/时效性）
+    for (const e of data.entities || []) {
+      if (e.interests || e.goal_structure || e.evidence_freshness) {
+        state.entityRichData[e.id] = {
+          interests: e.interests,
+          goal_structure: e.goal_structure,
+          evidence_freshness: e.evidence_freshness,
+          evidence_date_range: e.evidence_date_range,
+          status_trend: e.status_trend,
+        };
+      }
+    }
   });
 
   sse.on("evolve:tick_start", (data) => {
@@ -319,10 +341,19 @@ function registerEvolveHandlers() {
   });
 
   sse.on("evolve:agent_action", (data) => {
+    const styleTag = data.cognition_style === "intuitive" ? "[⚡直觉] "
+      : data.cognition_style === "reactive" ? "[🔥应激] "
+      : "[🎯策略] ";
     addLog(
       "action",
-      `${data.agent_name} [${data.action_type}]: ${data.action_description || ''}`
+      `${styleTag}${data.agent_name} [${data.action_type}]: ${data.action_description || ''}`
     );
+    // v3: 存储完整行动数据
+    if (!state.agentActions[data.tick]) {
+      state.agentActions[data.tick] = [];
+    }
+    state.agentActions[data.tick].push(data);
+
     if (cyGlobal.pulseAgent) {
       cyGlobal.pulseAgent(data.agent_id, data.target_entities || []);
     }
@@ -355,7 +386,10 @@ function registerEvolveHandlers() {
   });
 
   sse.on("evolve:equilibrium", (data) => {
-    addLog("success", `均衡检测触发终止 (Tick ${data.tick}): ${data.reason}`);
+    state.equilibriumDetected = true;
+    state.equilibriumReason = data.reason;
+    state.equilibriumTick = data.tick;
+    addLog("warning", `⚖️ 均衡检测触发终止 (Tick ${data.tick}): ${data.reason}`);
   });
 
   sse.on("evolve:complete", (data) => {

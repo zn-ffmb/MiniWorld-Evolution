@@ -35,6 +35,7 @@ const {
   showPropagation,
   clearTickHighlights,
   fitView,
+  applyNetworkMetrics,
   onNodeClick,
 } = useCytoscape(graphContainer);
 
@@ -50,6 +51,7 @@ onMounted(() => {
   cyGlobal.clearTickHighlights = clearTickHighlights;
   cyGlobal.fitView = fitView;
   cyGlobal.runLayout = runLayout;
+  cyGlobal.applyNetworkMetrics = applyNetworkMetrics;
 
   // 节点点击
   onNodeClick((data) => {

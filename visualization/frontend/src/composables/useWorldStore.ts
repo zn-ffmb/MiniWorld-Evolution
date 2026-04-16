@@ -1,4 +1,5 @@
 import { reactive } from "vue";
+import type { EvolveAgentActionData } from "../types/events";
 
 export type AppPhase = "idle" | "building" | "built" | "evolving" | "evolved";
 
@@ -36,6 +37,24 @@ export interface WorldStoreState {
     new_status: string;
     change_reason: string;
   }>>;
+  // v3: Agent 行动详情（tick → 行动数组）
+  agentActions: Record<number, EvolveAgentActionData[]>;
+  // v3: 当前选中查看的 Agent 行动
+  selectedAction: EvolveAgentActionData | null;
+  // v3: 均衡检测
+  equilibriumDetected: boolean;
+  equilibriumReason: string;
+  equilibriumTick: number;
+  // v3: 网络分析
+  networkAnalysis: any | null;
+  // v3: 实体富信息（entity_id → interests, goal_structure, evidence）
+  entityRichData: Record<string, {
+    interests?: any[];
+    goal_structure?: any;
+    evidence_freshness?: string;
+    evidence_date_range?: string;
+    status_trend?: string;
+  }>;
 }
 
 const state = reactive<WorldStoreState>({
@@ -61,6 +80,13 @@ const state = reactive<WorldStoreState>({
   logs: [],
   selectedNode: null,
   entityHistory: {},
+  agentActions: {},
+  selectedAction: null,
+  equilibriumDetected: false,
+  equilibriumReason: "",
+  equilibriumTick: 0,
+  networkAnalysis: null,
+  entityRichData: {},
 });
 
 function addLog(type: string, message: string) {
@@ -88,6 +114,13 @@ function reset() {
   state.logs = [];
   state.selectedNode = null;
   state.entityHistory = {};
+  state.agentActions = {};
+  state.selectedAction = null;
+  state.equilibriumDetected = false;
+  state.equilibriumReason = "";
+  state.equilibriumTick = 0;
+  state.networkAnalysis = null;
+  state.entityRichData = {};
   state.worldDescription = "";
   state.tickUnit = "";
 }

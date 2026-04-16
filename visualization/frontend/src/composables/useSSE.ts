@@ -30,6 +30,7 @@ export function useSSE() {
     "build:prompt_progress",
     "build:prompts_generated",
     "build:meta_generated",
+    "build:network_analysis",
     "build:complete",
     "build:error",
     "evolve:start",

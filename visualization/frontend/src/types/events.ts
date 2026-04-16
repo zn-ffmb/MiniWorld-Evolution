@@ -78,6 +78,24 @@ export interface EvolveAgentActionData {
   action_description: string;
   reasoning: string;
   target_entities: string[];
+  // v3: 策略推理链
+  situation_assessment?: string;
+  key_party_predictions?: Array<{
+    party: string;
+    relationship: string;
+    predicted_action: string;
+    confidence: string;
+  }>;
+  counterfactual?: string;
+  // v3: 审议记录
+  deliberation?: Array<{
+    perspective: string;
+    challenge: string;
+    response: string;
+  }>;
+  // v3.1: 认知层级
+  cognition_style?: string;
+  cognition_context?: Record<string, any>;
 }
 
 /** evolve:propagation */

@@ -11,6 +11,7 @@ export interface EntityData {
   evidence_freshness?: string;
   evidence_date_range?: string;
   status_trend?: string;
+  cognition_style?: string;
 }
 
 /** 关系边数据 */
