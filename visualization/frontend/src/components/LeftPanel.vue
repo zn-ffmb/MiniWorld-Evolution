@@ -359,10 +359,22 @@ function registerEvolveHandlers() {
     }
   });
 
+  // v3: 逐轮级联传播动画
+  sse.on("evolve:propagation_round", (data) => {
+    const updates = data.entity_updates || [];
+    const roundLabel = data.total_rounds > 1
+      ? `Round ${data.round}/${data.total_rounds}`
+      : '';
+    addLog("propagate", `Tick ${data.tick} ${roundLabel} 传播: ${updates.length} 个实体更新`);
+    // 每轮独立触发图谱动画（自然形成时序差异）
+    if (cyGlobal.showPropagation && updates.length) {
+      cyGlobal.showPropagation(updates);
+    }
+  });
+
   sse.on("evolve:propagation", (data) => {
     const updates = data.entity_updates || [];
-    addLog("propagate", `Tick ${data.tick} 传播: ${updates.length} 个实体更新`);
-    // 收集实体历史状态
+    // 收集实体历史状态（使用汇总事件，避免与 round 事件重复）
     for (const u of updates) {
       if (!u.entity_id) continue;
       if (!state.entityHistory[u.entity_id]) {
@@ -374,9 +386,6 @@ function registerEvolveHandlers() {
         new_status: u.new_status || "",
         change_reason: u.change_reason || "",
       });
-    }
-    if (cyGlobal.showPropagation) {
-      cyGlobal.showPropagation(updates);
     }
   });
 

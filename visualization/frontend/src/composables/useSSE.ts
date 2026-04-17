@@ -38,6 +38,7 @@ export function useSSE() {
     "evolve:assessment",
     "evolve:plan",
     "evolve:agent_action",
+    "evolve:propagation_round",
     "evolve:propagation",
     "evolve:narrative",
     "evolve:tick_end",

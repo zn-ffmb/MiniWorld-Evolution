@@ -68,7 +68,17 @@ class LLMClient:
         )
 
         if response.choices and response.choices[0].message:
-            return response.choices[0].message.content or ""
+            finish_reason = response.choices[0].finish_reason
+            content = response.choices[0].message.content or ""
+            if finish_reason == "length":
+                logger.warning(
+                    f"[LLM] 输出被截断 (finish_reason=length)，"
+                    f"max_tokens={extra_params.get('max_tokens', self.max_tokens)}，"
+                    f"已输出 {len(content)} 字符。"
+                    f"输入 token: {getattr(response.usage, 'prompt_tokens', '?')}，"
+                    f"输出 token: {getattr(response.usage, 'completion_tokens', '?')}"
+                )
+            return content
         return ""
 
     def stream_invoke(self, system_prompt: str, user_prompt: str, **kwargs) -> Generator[str, None, None]:

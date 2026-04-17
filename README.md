@@ -41,6 +41,19 @@
 
 每个参与方（国家、组织、市场）都是一个独立的 LLM Agent，拥有自己的角色身份和能力边界。每轮决策时，Agent 自行判断要不要行动、怎么行动——WorldLLM 不干预，只传播结果。
 
+### 🧠 三种认知风格 — 同一世界，不同思维方式
+
+不同类型的参与者用不同的方式思考：
+- **🎯 策略型（Strategic）**：两阶段深度推理——先做局势研判、关键方预判、反事实分析，再从对手视角换位审议自己的方案
+- **⚡ 直觉型（Intuitive）**：凭经验和本能快速判断，一步到位
+- **🔥 应激型（Reactive）**：被群体情绪和即时刺激驱动，情绪化反应
+
+认知风格在 L1 构建阶段根据实体性质自动分配（国家领导人通常是策略型，市场情绪通常是应激型），L2 决策时自动路由到对应的推理路径。
+
+### 📌 利益-目标驱动 — 每个 Agent 都知道自己要什么
+
+L1 构建阶段会从搜索证据中推断每个参与者的利益维度（能源安全/经济利益/国内政治...）和三层目标结构（生存目标 > 战略目标 > 机会目标），加上理性约束条件。这些结构化的利益数据直接注入 Agent 的角色提示词，让决策有明确的动机基础而非凭空编造。
+
 ### 🎭 角色差异化决策 — 同一世界，不同立场
 
 所有 Agent 接收完全相同的世界状态信息和公开事件时间线。决策差异来自两个维度：每个 Agent 拥有独立的 **角色身份提示词（agent_prompt）**，定义了其立场、关注点和决策风格；以及独立的 **行动历史（action_history）**，记录了该 Agent 之前所有轮次的行动及其效果。同一份情报，军事力量关注的是威胁评估，经济组织关注的是市场冲击——角色认知差异驱动决策分化。
@@ -138,15 +151,17 @@ npm install && npm run dev
 ```
 输入: 背景 + 关注点
         │
-Phase 1  SearchPlanNode       → 假设驱动的三维度搜索规划（影响因素/关键实体/核心问题）
-Phase 2  SearchExecutionNode  → 并行搜索 (Tavily/Bocha)，按维度聚类采样去噪
-Phase 3  EntityExtractionNode → 实体 & 关系提取 + EvidenceValidator 证据溯源校验
-Phase 4  WorldMergeNode       → 实体图谱增量融合（去重 & 合并）
-Phase 5  ConvergenceCheckNode → 三级收敛检测（结构 → 功能 → 语义）
-              ↓ 收敛后执行 ↓
-Phase 6  PromptGenerationNode → human 类实体生成 agent_prompt + action_space（能力边界）
-Phase 7  WorldMetaNode        → 世界元信息（标题/描述/tick_unit）
-Phase 8  SnapshotExportNode   → 导出 WorldSnapshot（JSON + Markdown 报告）
+Phase 1    SearchPlanNode       → 假设驱动的三维度搜索规划（影响因素/关键实体/核心问题）
+Phase 2    SearchExecutionNode  → 并行搜索 (Tavily/Bocha)，按维度聚类采样去噪，证据时效性标注
+Phase 3    EntityExtractionNode → 实体 & 关系提取 + EvidenceValidator 证据溯源校验 + 认知风格分配
+Phase 4    WorldMergeNode       → 实体图谱增量融合（去重 & 合并）
+Phase 5    ConvergenceCheckNode → 三级收敛检测（结构 → 功能 → 语义）
+               ↓ 收敛后执行 ↓
+Phase 5.5  NetworkAnalysisNode  → NetworkX 拓扑分析（中心性/社区/脆弱节点）
+Phase 5.7  InterestExtractionNode → 利益维度推断 + 目标结构建模（行为反推 + 覆盖审视）
+Phase 6    PromptGenerationNode → human 类实体生成 agent_prompt + action_space（能力边界）
+Phase 7    WorldMetaNode        → 世界元信息（标题/描述/tick_unit）
+Phase 8    SnapshotExportNode   → 导出 WorldSnapshot（JSON + Markdown 报告）
 ```
 
 ### L2 EvolutionEngine — 闭合小世界演变
@@ -161,11 +176,13 @@ Tick 0   WorldLLM.inject_perturbation → 注入扰动，产生即时冲击
         ▼  ── 循环 max_ticks 次 ──────────────────────────────
 Step 1   WorldLLM.assess    → 评估局势（核心矛盾 & 关键张力）
 Step 2   WorldLLM.plan      → 准备统一世界状态快照（不调用 LLM）
-Step 3   AgentRunner × N    → 所有 human Agent 并发自主决策
-                               输入: 统一世界状态 + 公开事件时间线 + 个人行动历史
-                               输出: do / decide / say / wait
-Step 4   WorldLLM.propagate → 行动传播为实体状态 & 关系更新
-Step 5   WorldLLM.narrate   → 叙事摘要 & 终止检测
+Step 3   AgentRunner × N    → 所有 human Agent 按认知风格路由决策
+                               🎯 策略型: 局势研判 → 关键方预判 → 反事实 → 换位审议
+                               ⚡ 直觉型: 单步直觉判断
+                               🔥 应激型: 情绪驱动快速反应
+Step 4   WorldLLM.propagate → 多轮级联传播（Agent 行动 → 一级影响 → 级联连锁）
+Step 5   WorldLLM.narrate   → 叙事摘要
+Step 6   EquilibriumDetector → 动态均衡检测（行动枯竭/状态收敛/循环检测）
         ▼  ─────────────────────────────────────────────────
 TimelineExporter → 导出完整演变时间线（JSON + Markdown）
 ```
@@ -179,18 +196,33 @@ TimelineExporter → 导出完整演变时间线（JSON + Markdown）
 
 ## 🖥 可视化平台
 
-前端 Vue 3 + Cytoscape.js，后端 FastAPI + SSE 实时流式推送。
+前端 Vue 3 + Cytoscape.js，后端 FastAPI + SSE 实时流式推送。三栏布局：左侧控制面板、中间力导向图谱、右侧多 Tab 信息面板。
 
-- **构建阶段**：实体和关系边逐条"生长"出来，实时观看图谱膨胀
-- **演变阶段**：每个 Tick 叙事滚动出现，受影响实体高亮闪烁
-- **零侵入设计**：可视化层完全通过 import 复用引擎代码，不修改任何已有文件
+**构建阶段：**
+- 实体和关系边逐条"生长"出来，实时观看图谱膨胀
+- 构建完成后节点大小按中介中心性自动缩放（重要节点更大）
+- 网络分析概况面板展示密度、聚类系数、枢纽节点、脆弱节点
+
+**演变阶段：**
+- 每个 Tick 叙事滚动出现，受影响实体高亮闪烁
+- Agent 决策按认知风格标记：🎯策略 / ⚡直觉 / 🔥应激，节点边框样式区分
+- 级联传播逐轮动画，可视化影响扩散过程
+- 均衡终止可视化指示（TopNav 显示终止原因）
+
+**信息面板：**
+- **事件日志**：所有 SSE 事件实时滚动
+- **时间线**：叙事摘要 + 均衡终止卡片
+- **决策详情**：点击 Agent 行动查看完整推理链（局势研判 → 关键方预判 → 反事实 → 换位审议）
+- **实体详情**：状态变更历史 + 证据时效性 + 利益维度 + 目标结构
+
+**零侵入设计：** 可视化层完全通过 import 复用引擎代码，不修改任何已有引擎文件。
 
 ## 📁 项目结构
 
 ```
 ├── WorldEngine/              # L1 闭合小世界构建引擎
 │   ├── builder.py           # 构建调度中心
-│   ├── nodes/               # 8个管线节点
+│   ├── nodes/               # 管线节点（含 network_analysis / interest_extraction）
 │   ├── search/              # 搜索协调 + API 客户端（Tavily / Bocha）
 │   ├── state/               # 世界状态模型（Entity, Edge, WorldSnapshot）
 │   ├── llms/                # LLM 客户端抽象
@@ -198,8 +230,9 @@ TimelineExporter → 导出完整演变时间线（JSON + Markdown）
 │
 ├── EvolutionEngine/          # L2 闭合小世界演变引擎
 │   ├── engine.py            # 演变调度中心
-│   ├── world_llm.py         # WorldLLM 世界规则引擎
-│   ├── agent_runner.py      # Agent 决策执行器
+│   ├── world_llm.py         # WorldLLM 世界规则引擎（含级联传播）
+│   ├── agent_runner.py      # Agent 决策执行器（认知风格路由）
+│   ├── equilibrium.py       # 动态均衡检测器
 │   ├── exporters/           # 时间线导出
 │   └── prompts/             # L2 Prompt 模板
 │
@@ -225,6 +258,9 @@ TimelineExporter → 导出完整演变时间线（JSON + Markdown）
 | `MAX_BUILD_ITERATIONS` | `3` | L1 最大迭代次数 |
 | `EVOLUTION_MAX_TICKS` | `10` | L2 最大演变轮次 |
 | `EVOLUTION_AGENT_TEMPERATURE` | `0.7` | Agent 决策温度（越高越"大胆"） |
+| `EVOLUTION_AGENT_DELIBERATION` | `True` | 策略型 Agent 是否启用换位审议（第二阶段） |
+| `EVOLUTION_EQUILIBRIUM_WINDOW` | `3` | 均衡检测滑动窗口大小 |
+| `EVOLUTION_MAX_CASCADE_ROUNDS` | `3` | 级联传播最大轮次 |
 | `SEARCH_CONCURRENCY` | `5` | 搜索并行线程数 |
 
 支持任何 OpenAI 兼容 API（通义千问、GPT-4o、Claude、DeepSeek 等），国内可直接使用无需翻墙。

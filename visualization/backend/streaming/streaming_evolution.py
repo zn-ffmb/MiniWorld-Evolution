@@ -220,17 +220,31 @@ class StreamingEvolutionEngine:
                     **action.to_dict(),
                 })
 
-            # Step 4: 传播与更新
+            # Step 4: 传播与更新（v3: 级联传播逐轮事件）
             max_cascade = getattr(self.config, "EVOLUTION_MAX_CASCADE_ROUNDS", 3)
-            tick_updates, prop_summary = await asyncio.to_thread(
+            tick_updates, prop_summary, cascade_rounds = await asyncio.to_thread(
                 self.world_llm.propagate, state, all_actions, max_cascade_rounds=max_cascade
             )
             state.apply_updates(tick_updates, tick=tick)
 
+            # 逐轮发送传播事件
+            for cr in cascade_rounds:
+                round_updates = cr.get("updates", [])
+                if round_updates:
+                    yield make_event("evolve:propagation_round", {
+                        "tick": tick,
+                        "round": cr["round"],
+                        "total_rounds": len(cascade_rounds),
+                        "entity_updates": [u.to_dict() for u in round_updates],
+                        "is_final": cr.get("is_final", False),
+                    })
+
+            # 兼容：仍发送汇总事件
             yield make_event("evolve:propagation", {
                 "tick": tick,
                 "entity_updates": [u.to_dict() for u in tick_updates],
                 "propagation_summary": prop_summary,
+                "cascade_rounds_count": len(cascade_rounds),
             })
 
             # Step 5: 叙事总结

@@ -135,6 +135,11 @@ class WorldBuilder:
                 "existing_edges": self._summarize_edges(state),
             })
 
+            # 提取失败时跳过本轮
+            if "error" in extraction:
+                logger.warning(f"实体提取失败 (迭代 {state.iteration})，跳过本轮: {extraction.get('error')}")
+                continue
+
             # 证据校验
             extraction = self.evidence_validator.filter_extraction(extraction)
 

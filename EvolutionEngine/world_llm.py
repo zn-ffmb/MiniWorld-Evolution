@@ -153,7 +153,7 @@ class WorldLLM:
     def propagate(
         self, state: EvolutionState, actions: List[AgentAction],
         max_cascade_rounds: int = 3,
-    ) -> Tuple[List[EntityUpdate], str]:
+    ) -> Tuple[List[EntityUpdate], str, list]:
         """
         Step 4: 多轮级联传播。
 
@@ -162,7 +162,8 @@ class WorldLLM:
         直到无新增影响或达到最大轮次。
 
         Returns:
-            (all_entity_updates, propagation_summary)
+            (all_entity_updates, propagation_summary, cascade_rounds)
+            cascade_rounds: [{"round": 1, "updates": [...], "is_final": bool}, ...]
         """
         actions_summary = "\n".join(
             f"- {a.agent_name} [{a.action_type}]: {a.action_description}"
@@ -194,7 +195,7 @@ class WorldLLM:
         result = extract_clean_response(response)
         if "error" in result:
             logger.warning(f"一级传播 JSON 解析失败: {result}")
-            return [], "传播解析失败"
+            return [], "传播解析失败", []
 
         round1_updates = self._parse_entity_updates(
             result.get("entity_updates", []),
@@ -202,11 +203,13 @@ class WorldLLM:
         )
         summary = result.get("propagation_summary", "")
         all_updates = list(round1_updates)
+        cascade_rounds = [{"round": 1, "updates": round1_updates, "is_final": False}]
 
         logger.info(f"  Round 1（一级传播）: {len(round1_updates)} 个实体更新")
 
         if not round1_updates:
-            return all_updates, summary
+            cascade_rounds[0]["is_final"] = True
+            return all_updates, summary, cascade_rounds
 
         # === Round 2+: 级联传播 ===
         # 创建临时状态副本用于级联推理
@@ -228,10 +231,12 @@ class WorldLLM:
 
             if not cascade_updates:
                 logger.info(f"  Round {round_num}（级联）: 级联耗尽，停止")
+                cascade_rounds[-1]["is_final"] = True
                 break
 
             logger.info(f"  Round {round_num}（级联）: {len(cascade_updates)} 个实体更新")
             all_updates.extend(cascade_updates)
+            cascade_rounds.append({"round": round_num, "updates": cascade_updates, "is_final": False})
 
             # 更新临时状态
             for u in cascade_updates:
@@ -240,7 +245,11 @@ class WorldLLM:
 
             last_round_updates = cascade_updates
 
-        return all_updates, summary
+        # 标记最后一轮为 final
+        if cascade_rounds:
+            cascade_rounds[-1]["is_final"] = True
+
+        return all_updates, summary, cascade_rounds
 
     def _cascade_round(
         self,

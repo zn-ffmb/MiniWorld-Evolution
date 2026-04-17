@@ -413,13 +413,6 @@ function cognitionLabel(style?: string): string {
   return "🎯策略";
 }
 
-// v3: 认知风格标签文字
-function cognitionLabel(style?: string): string {
-  if (style === "intuitive") return "⚡直觉";
-  if (style === "reactive") return "🔥应激";
-  return "🎯策略";
-}
-
 // v3: 证据时效性标签
 function freshnessLabel(freshness: string): string {
   if (freshness === "mostly_fresh") return "较新";

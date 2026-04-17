@@ -210,7 +210,7 @@ class EvolutionEngine:
         # Step 4: WorldLLM 传播与更新（v3: 多轮级联）
         logger.info("--- Step 4: 传播与更新 ---")
         max_cascade = getattr(self.config, "EVOLUTION_MAX_CASCADE_ROUNDS", 3)
-        updates, prop_summary = self.world_llm.propagate(
+        updates, prop_summary, _cascade_rounds = self.world_llm.propagate(
             state, all_actions, max_cascade_rounds=max_cascade,
         )
 
